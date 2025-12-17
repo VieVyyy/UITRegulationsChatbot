@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 UIT Chatbot RAG Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .chat-container { width: 100%; max-width: 700px; background: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { background: #004d99; color: white; padding: 15px; text-align: center; font-size: 1.2em; }
+        .chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; max-height: 60vh; }
+        .message { margin-bottom: 15px; padding: 10px; border-radius: 18px; max-width: 80%; line-height: 1.4; }
+        .user-message { background-color: #e1ffc7; margin-left: auto; text-align: right; border-bottom-right-radius: 2px; }
+        .bot-message { background-color: #f1f0f0; margin-right: auto; text-align: left; border-bottom-left-radius: 2px; }
+        .source-info { font-size: 0.8em; color: #666; margin-top: 5px; border-top: 1px solid #ccc; padding-top: 5px; }
+        .input-area { display: flex; padding: 15px; border-top: 1px solid #e0e0e0; }
+        .input-area input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; margin-right: 10px; font-size: 1em; }
+        .input-area button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; transition: background-color 0.3s; }
+        .input-area button:hover { background-color: #0056b3; }
+        .loading { text-align: center; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">UIT Chatbot Luật Hỏi Đáp 🤖</div>
+        <div class="chat-box" id="chat-box">
+            <div class="message bot-message">Chào bạn, tôi là trợ lý ảo hỗ trợ sinh viên UIT. Hãy hỏi tôi các vấn đề về quy chế, luật lệ của trường.</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Nhập câu hỏi của bạn...">
+            <button onclick="sendMessage()">Gửi</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        // Cuộn xuống cuối khung chat
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Tạo message mới
+        function createMessage(content, type, source = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerText = content;
+
+            if (type === 'bot' && source && source !== 'N/A') {
+                const sourceDiv = document.createElement('div');
+                sourceDiv.className = 'source-info';
+                sourceDiv.innerText = `Nguồn trích dẫn: ${source}`;
+                messageDiv.appendChild(sourceDiv);
+            }
+
+            chatBox.appendChild(messageDiv);
+            scrollToBottom();
+            return messageDiv;
+        }
+
+        async function sendMessage() {
+            const query = userInput.value.trim();
+            if (!query) return;
+
+            // 1. Hiển thị tin nhắn người dùng
+            createMessage(query, 'user');
+            userInput.value = '';
+
+            // 2. Hiển thị trạng thái loading
+            const loadingMessage = createMessage("Bot đang tìm kiếm và suy nghĩ...", 'bot');
+            
+            // 3. Gửi câu hỏi đến server Flask
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+                
+                // 4. Xóa loading và hiển thị câu trả lời
+                chatBox.removeChild(loadingMessage);
+                createMessage(data.response, 'bot', data.source);
+
+            } catch (error) {
+                console.error('Lỗi khi gửi yêu cầu:', error);
+                chatBox.removeChild(loadingMessage);
+                createMessage("Xin lỗi, đã xảy ra lỗi không mong muốn. Vui lòng thử lại.", 'bot');
+            }
+        }
+
+        // Cho phép gửi bằng phím Enter
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        scrollToBottom();
+    </script>
+</body>
+</html>
